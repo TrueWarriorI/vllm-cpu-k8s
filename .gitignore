@@ -1,0 +1,7 @@
+k8s/base/secrets.env
+loadtest/results/*.json
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.docx

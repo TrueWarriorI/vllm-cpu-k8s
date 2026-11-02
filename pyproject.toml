@@ -1,0 +1,16 @@
+[project]
+name = "vllm-cpu-k8s"
+version = "1.0.0"
+description = "vLLM CPU inference on Kubernetes with private logging"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

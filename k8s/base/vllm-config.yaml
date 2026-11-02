@@ -1,0 +1,8 @@
+# Arguments for `vllm serve --config`. Edit and re-apply: kustomize renames the ConfigMap and the pod restarts.
+served-model-name: qwen2.5-1.5b-instruct
+dtype: bfloat16
+max-model-len: 4096
+max-num-seqs: 16
+max-num-batched-tokens: 2048
+enable-prefix-caching: true
+enable-log-requests: true

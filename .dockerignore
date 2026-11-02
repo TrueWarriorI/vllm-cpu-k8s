@@ -1,0 +1,7 @@
+*
+!requirements.txt
+!downloader/requirements.txt
+!config/
+!src/
+!scripts/
+**/__pycache__

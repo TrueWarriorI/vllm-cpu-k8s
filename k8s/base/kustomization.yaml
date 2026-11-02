@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: llm
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: vllm-cpu
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+configMapGenerator:
+  - name: vllm-config
+    files:
+      - config.yaml=vllm-config.yaml
+  - name: vllm-model
+    envs:
+      - model.env
+  - name: vllm-runtime
+    envs:
+      - runtime.env
+secretGenerator:
+  - name: vllm-secrets
+    envs:
+      - secrets.env
