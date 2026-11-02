@@ -4,7 +4,7 @@ resources:
   - ../../base
 images:
   - name: vllm-cpu
-    newTag: 0.31.0
+    newTag: 0.29.0
   - name: model-downloader
     newTag: 1.0.0
 patches:

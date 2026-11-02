@@ -12,7 +12,7 @@ RUN /opt/venv/bin/pip install --no-deps --only-binary :all: -r /tmp/requirements
 
 FROM ${PYTHON_IMAGE}
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libtcmalloc-minimal4 libnuma1 \
+    && apt-get install -y --no-install-recommends libtcmalloc-minimal4 libnuma1 g++ \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 vllm \
     && useradd --uid 10001 --gid vllm --create-home --home-dir /home/vllm --shell /usr/sbin/nologin vllm

@@ -1,0 +1,1 @@
+2026-11-02 19:29:49,681 INFO Model Qwen/Qwen2.5-1.5B-Instruct@main found in /models/Qwen--Qwen2.5-1.5B-Instruct, skipping download

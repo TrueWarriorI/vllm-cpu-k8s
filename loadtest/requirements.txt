@@ -1,8 +1,14 @@
-# Generated: uv pip compile loadtest/requirements.in --universal --python-version 3.11
-anyio==4.16.0
+# Generated: uv pip compile loadtest/requirements.in --universal --python-version 3.8
+anyio==4.5.2 ; python_full_version < '3.9'
+anyio==4.12.1 ; python_full_version == '3.9.*'
+anyio==4.16.0 ; python_full_version >= '3.10'
 certifi==2026.10.23
+exceptiongroup==1.3.1 ; python_full_version < '3.11'
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
-idna==3.20
-typing-extensions==4.16.0 ; python_full_version < '3.15'
+idna==3.15 ; python_full_version < '3.9'
+idna==3.20 ; python_full_version >= '3.9'
+sniffio==1.3.1 ; python_full_version < '3.9'
+typing-extensions==4.13.2 ; python_full_version < '3.9'
+typing-extensions==4.16.0 ; python_full_version >= '3.9' and python_full_version < '3.15'
