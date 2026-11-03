@@ -51,7 +51,7 @@ tests/                      тесты фильтра, middleware и загру�
    minikube start --driver=docker --container-runtime=docker --cpus=6 --memory=12g
    ```
 
-2. Собрать оба образа сразу в Docker внутри Minikube, без реестра. Клиент Docker Desktop подключается к демону Minikube и собирает через BuildKit, который нужен для `COPY --chmod`. Первая сборка vLLM качает около 1 ГБ колёс:
+2. Собрать оба образа сразу в Docker внутри Minikube, без реестра. Клиент Docker Desktop подключается к демону Minikube и собирает через BuildKit, который нужен для `COPY --chmod`. Первая сборка vLLM качает около 700 МБ колёс:
 
    ```powershell
    & minikube docker-env --shell powershell | Invoke-Expression
@@ -101,7 +101,7 @@ tests/                      тесты фильтра, middleware и загру�
 
 | Требование | Реализация |
 |---|---|
-| Kubernetes или Minikube | манифесты в `k8s/`, проверены по схемам Kubernetes 1.34 в строгом режиме |
+| Kubernetes или Minikube | манифесты в `k8s/`, развёрнуты в Minikube 1.39 с Kubernetes 1.37 и проверены по схемам Kubernetes в строгом режиме |
 | Instruct-модель, только CPU | `Qwen/Qwen2.5-1.5B-Instruct`, bfloat16; официальное CPU-колесо vLLM и torch `2.13.0+cpu`, CUDA-пакетов в образе нет |
 | vLLM 0.27.0 или выше | 0.29.0, последняя версия с официальным CPU-колесом в релизах GitHub: для 0.30.0 и новее его не публикуют |
 | Rootless-контейнер | `USER 10001` в образе; в поде `runAsNonRoot`, сброшены все capabilities, `allowPrivilegeEscalation: false`, корневая файловая система только для чтения, seccomp `RuntimeDefault`; namespace требует Pod Security `restricted` |
@@ -118,24 +118,24 @@ tests/                      тесты фильтра, middleware и загру�
 
 vLLM печатает содержимое запросов в четырёх местах: `RequestLogger` (промпт на уровне DEBUG, параметры на INFO), тело запроса на DEBUG, сгенерированный текст при `--enable-log-outputs` и отладочный дамп ответов при `VLLM_DEBUG_LOG_API_SERVER_RESPONSE`. При падении движка `dump_input` вдобавок пишет `SamplingParams` запроса, а там бывают стоп-строки и JSON-схемы пользователя.
 
-Исходники vLLM не патчатся: используются штатные точки расширения, поэтому решение переживает обновление версии.
+Исходники vLLM не патчатся: используются штатные точки расширения. При обновлении vLLM достаточно проверить имена логгеров и форматы сообщений, на них написаны тесты.
 
 - `config/logging.json` подключается через `VLLM_LOGGING_CONFIG_PATH`. vLLM применяет его в каждом процессе, включая процесс движка. Логи выводятся в JSON, на обработчике стоит фильтр `RedactRequestContent`.
 - Фильтр оставляет от записей `RequestLogger` только факт: `Received request <id>` и `Generated response <id>: finish_reason=...`. Остальные записи с аргументами он отбрасывает, поэтому если в новой версии vLLM поменяется формат сообщения, содержимое не утечёт, а запись просто пропадёт. Дампы ответов и данные запросов из `dump_input` тоже отбрасываются.
 - `AccessLogMiddleware` пишет строку на каждый HTTP-запрос: ID (из `X-Request-Id` или сгенерированный), метод, путь, статус, размеры запроса и ответа, время до первого байта и общее время. Тела запроса и ответа он не читает.
 - `entrypoint.sh` выставляет эти настройки сам и снимает `VLLM_DEBUG_LOG_API_SERVER_RESPONSE`, поэтому значения из ConfigMap их не переопределят. Фильтр работает, даже если в ConfigMap включить `enable-log-outputs`.
 
-Так выглядит лог одного потокового запроса:
+Так выглядят записи из прогона в Minikube (`run-logs/vllm.txt`): факт запроса, его строка в access-логе и отклонённый запрос без токена. Префикс `(APIServer pid=1)` добавляет сам vLLM.
 
-```json
-{"level": "INFO", "logger": "vllm.entrypoints.serve.utils.request_logger", "process": "APIServer", "message": "Received request chatcmpl-test-stream-1"}
-{"level": "INFO", "logger": "vllm.entrypoints.serve.utils.request_logger", "process": "APIServer", "message": "Generated response chatcmpl-test-stream-1 (streaming complete): finish_reason=streaming_complete"}
-{"level": "INFO", "logger": "vllm_privacy.access", "process": "APIServer", "message": "request", "request_id": "test-stream-1", "method": "POST", "path": "/v1/chat/completions", "status": 200, "request_bytes": 126, "response_bytes": 3732, "duration_ms": 38.8, "first_byte_ms": 14.5, "client": "10.244.0.1"}
+```text
+(APIServer pid=1) {"time": "2026-11-02T15:59:58+0000", "level": "INFO", "logger": "vllm.entrypoints.serve.utils.request_logger", "process": null, "message": "Received request chatcmpl-b6746150fa5c064b"}
+(APIServer pid=1) {"time": "2026-11-02T16:00:14+0000", "level": "INFO", "logger": "vllm_privacy.access", "process": null, "message": "request", "request_id": "eee799603d784b2cb5838607cda526f5", "method": "POST", "path": "/v1/chat/completions", "status": 200, "request_bytes": 261, "response_bytes": 1004, "duration_ms": 16386.9, "first_byte_ms": 16386.5, "client": "127.0.0.1"}
+(APIServer pid=1) {"time": "2026-11-02T16:00:26+0000", "level": "INFO", "logger": "vllm_privacy.access", "process": null, "message": "request", "request_id": "80628fa6f85042dd9a2fe04116669545", "method": "GET", "path": "/v1/models", "status": 401, "request_bytes": 0, "response_bytes": 70, "duration_ms": 0.2, "first_byte_ms": 0.1, "client": "127.0.0.1"}
 ```
 
 ### Авторизация
 
-Встроенный `--api-key` vLLM защищает только пути `/v1`, `/v2` и `/inference`. Путь `/invocations` с той же генерацией остаётся открытым, об этом прямо сказано в документации vLLM. Поэтому авторизацию выполняет `BearerAuthMiddleware`: он требует `Authorization: Bearer <API_BEARER_TOKEN>` на всех путях, кроме `/health`, `/ping` и `/version`, которые нужны пробам Kubernetes. Токен сравнивается за постоянное время.
+Встроенный `--api-key` vLLM защищает только пути `/v1`, `/v2` и `/inference`. Путь `/invocations` с той же генерацией остаётся открытым, это описано в разделе [Security](https://docs.vllm.ai/en/latest/usage/security/) документации vLLM. Поэтому авторизацию выполняет `BearerAuthMiddleware`: он требует `Authorization: Bearer <API_BEARER_TOKEN>` на всех путях, кроме `/health`, `/ping` и `/version`, которые нужны пробам Kubernetes. Токен сравнивается за постоянное время.
 
 ### Параметры CPU
 
@@ -202,7 +202,7 @@ python -m venv .venv
 
 Здесь узкое место в декодировании: каждый шаг генерации читает все веса модели из памяти, и чем больше последовательностей идёт в одном батче, тем дешевле токен.
 
-- `--max-num-seqs`: поднять (у нас 16), чтобы в батч попадало больше одновременных запросов. Расплата растёт TPOT каждого отдельного запроса.
+- `--max-num-seqs`: поднять (у нас 16), чтобы в батч попадало больше одновременных запросов. Расплата: растёт TPOT каждого отдельного запроса.
 - `VLLM_CPU_KVCACHE_SPACE`: должно хватать KV-кэша на все одновременные последовательности, иначе планировщик вытесняет запросы. Короткий контекст позволяет держать много последовательностей при умеренном объёме.
 - `--max-model-len`: уменьшить до реально нужного, чтобы не резервировать память под длинный контекст.
 - `--enable-prefix-caching` (уже включён): если у запросов общий системный промпт, его префилл считается один раз.
@@ -216,16 +216,16 @@ python -m venv .venv
 
 - `--max-model-len` и `VLLM_CPU_KVCACHE_SPACE`: поднять под нужный контекст. Иначе запрос либо отклоняется, либо вытесняется.
 - `--max-num-batched-tokens`: поднять (у нас 2048). Chunked prefill делит длинный промпт на куски такого размера, и крупный кусок даёт меньше шагов префилла и лучший TTFT. Расплата: на время префилла дольше ждут декодирующиеся запросы.
-- `--kv-cache-dtype fp8`: CPU-бэкенд vLLM 0.29 его поддерживает. KV-кэш становится вдвое меньше, при той же памяти помещается вдвое больший контекст, а чтение кэша при декодировании ускоряется. Возможна небольшая потеря точности.
+- `--kv-cache-dtype fp8`: CPU-бэкенд vLLM 0.29 его поддерживает. KV-кэш становится вдвое меньше, и при той же памяти помещается вдвое больший контекст. Возможна небольшая потеря точности, а влияние на скорость на CPU нужно измерять.
 - `--max-num-seqs`: держать небольшим, чтобы память шла на длину контекста, а не на число последовательностей.
 - `--enable-prefix-caching`: даёт большой выигрыш, если длинный контекст повторяется (одни и те же документы в RAG, многоходовый диалог).
 - На многосокетном сервере: `--tensor-parallel-size` по числу NUMA-узлов с `VLLM_CPU_OMP_THREADS_BIND=0-31|32-63`, чтобы каждый процесс работал со своей памятью.
 
 ## Компромиссы и что можно улучшить
 
-- vLLM в контейнере выводит предупреждение `get_mempolicy: Operation not permitted`. Документация vLLM подтверждает, что работа от этого не страдает, отключаются только NUMA-оптимизации. Чтобы их включить, нужны `SYS_NICE` и ослабленный seccomp, а это противоречит требованию безопасности. Для однонодового Minikube выигрыш от NUMA нулевой.
+- vLLM в контейнере выводит предупреждение `get_mempolicy: Operation not permitted`. Без этих прав vLLM пропускает привязку памяти к NUMA-узлам и работает дальше, в прогоне в Minikube это ни на что не повлияло. Чтобы их включить, нужны `SYS_NICE` и ослабленный seccomp, а это противоречит требованию безопасности. Для однонодового Minikube выигрыш от NUMA нулевой.
 - Базовые образы указаны тегами. В продакшене их стоит закрепить по digest, а `requirements.txt` дополнить хешами (`--require-hashes`).
 - В рантайм-образе есть компилятор `g++`, без него не работает `torch.compile`. Его можно убрать, если включить `enforce-eager: true` в ConfigMap, но тогда инференс на CPU медленнее.
 - Реплика одна: PVC с режимом `ReadWriteOnce` и стратегия `Recreate`. Для нескольких реплик нужен `ReadWriteMany` или отдельный кэш на каждую реплику.
-- Сообщения исключений vLLM не фильтруются по содержимому. Сейчас ни одно из них не включает текст промпта, но для гарантии можно добавить в фильтр очистку `exc_info`.
+- Сообщения исключений vLLM не фильтруются по содержимому. В проверенных сценариях текста промпта в них не было, но для гарантии можно добавить в фильтр очистку `exc_info`.
 - NetworkPolicy не добавлена: стандартный CNI Minikube её не применяет.

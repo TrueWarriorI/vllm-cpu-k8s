@@ -21,7 +21,7 @@ def test_second_start_uses_cache_without_network(tmp_path, monkeypatch):
     monkeypatch.setenv("MODEL_CACHE_DIR", str(tmp_path))
     monkeypatch.setitem(sys.modules, "huggingface_hub", None)
 
-    assert download_model.main() == 0
+    download_model.main()
 
 
 def test_first_start_downloads_and_writes_marker(tmp_path, monkeypatch):
@@ -36,7 +36,7 @@ def test_first_start_downloads_and_writes_marker(tmp_path, monkeypatch):
     monkeypatch.setenv("MODEL_CACHE_DIR", str(tmp_path))
     (tmp_path / "Qwen--Qwen2.5-1.5B-Instruct").mkdir()
 
-    assert download_model.main() == 0
+    download_model.main()
     assert calls[0][0] == "Qwen/Qwen2.5-1.5B-Instruct" and calls[0][1]["revision"] == "abc123"
     marker = json.loads((tmp_path / "Qwen--Qwen2.5-1.5B-Instruct" / download_model.MARKER).read_text())
     assert marker["commit"] == "abc123"

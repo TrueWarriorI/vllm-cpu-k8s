@@ -51,6 +51,8 @@ async def one_request(client, url, headers, model, prompt, max_tokens):
             if first is None and any(c["delta"].get("content") for c in chunk.get("choices", [])):
                 first = time.perf_counter()
     ended = time.perf_counter()
+    if first is None:
+        raise RuntimeError("stream ended without content tokens")
     tokens = usage.get("completion_tokens", 0)
     return {
         "ttft": first - started,

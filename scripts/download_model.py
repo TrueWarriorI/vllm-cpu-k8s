@@ -29,14 +29,14 @@ def is_complete(target: Path, model_id: str, revision: str) -> bool:
     return meta.get("model_id") == model_id and revision in (meta.get("revision"), meta.get("commit"))
 
 
-def main() -> int:
+def main() -> None:
     model_id = os.environ["MODEL_ID"]
     revision = os.environ.get("MODEL_REVISION", "main")
     target = model_dir(Path(os.environ.get("MODEL_CACHE_DIR", "/models")), model_id)
 
     if is_complete(target, model_id, revision):
         log.info("Model %s@%s found in %s, skipping download", model_id, revision, target)
-        return 0
+        return
 
     from huggingface_hub import HfApi, snapshot_download
 
@@ -50,8 +50,7 @@ def main() -> int:
     tmp.write_text(json.dumps(marker))
     tmp.replace(target / MARKER)
     log.info("Download complete: %s", target)
-    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

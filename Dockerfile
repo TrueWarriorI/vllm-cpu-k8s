@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1.7
-# vLLM OpenAI-compatible server for CPU inference, running as an unprivileged user.
 
 ARG PYTHON_IMAGE=python:3.12-slim-bookworm
 
